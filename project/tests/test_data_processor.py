@@ -27,8 +27,8 @@ def test_tasks_without_story():
 
     enriched_epics, enriched_stories, enriched_tasks = process_data(epics_df, stories_df, tasks_df)
 
-    # Ensure that no tasks are left after filtering
-    assert enriched_tasks.empty
+    # Ensure that tasks without a valid story are assigned to the placeholder story
+    assert enriched_tasks['story_id'].iloc[0] == '0'
 
 # 3. Тест на истории без эпиков
 
@@ -43,8 +43,8 @@ def test_stories_without_epic():
 
     enriched_epics, enriched_stories, enriched_tasks = process_data(epics_df, stories_df, tasks_df)
 
-    # Ensure that no stories are left after filtering
-    assert enriched_stories.empty
+    # Ensure that stories without a valid epic are assigned to the placeholder epic
+    assert enriched_stories['epic_id'].iloc[0] == '0'
 
 # 4. Тест на корректные данные
 

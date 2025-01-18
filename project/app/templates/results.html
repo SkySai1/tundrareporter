@@ -1,34 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Results</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Задачи</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1>Task Results</h1>
-        <table class="table table-bordered mt-3">
-            <thead>
-                <tr>
-                    <th>Task ID</th>
-                    <th>Task Subject</th>
-                    <th>Story Subject</th>
-                    <th>Epic Subject</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in tasks %}
-                    <tr>
-                        <td>{{ task['id'] }}</td>
-                        <td>{{ task['subject'] }}</td>
-                        <td>{{ task['story_subject'] }}</td>
-                        <td>{{ task['epic_subject'] }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+
+<h1>Список задач</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Task ID</th>
+            <th>Subject</th>
+            <th>Story</th>
+            <th>Epic</th>
+            <th>Points Per Task</th>
+            <th>Specialist</th>
+            <th>Status</th>
+            <th>Created Date</th>
+            <th>Modified Date</th>
+            <th>Sprint</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for task in task_model %}
+        <tr>
+            <td>{{ task.task_id }}</td>
+            <td>{{ task.task_subject }}</td>
+            <td>{{ task.story_subject }}</td>
+            <td>{{ task.epic_subject }}</td>
+            <td>{{ task.points_per_task }}</td>
+            <td>{{ task.specialist }}</td>
+            <td>{{ task.status }}</td>
+            <td>{{ task.created_date }}</td>
+            <td>{{ task.modified_date }}</td>
+            <td>{{ task.sprint }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 </body>
 </html>

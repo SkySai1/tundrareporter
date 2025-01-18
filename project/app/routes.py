@@ -44,12 +44,14 @@ def upload():
 
     try:
         # Обработка данных
-        enriched_epics, enriched_stories, enriched_tasks = process_data(epics_df, stories_df, tasks_df)
+        task_model = process_data(epics_df, stories_df, tasks_df)
 
         # Передача данных в шаблон для отображения
-        return render_template('results.html', tasks=enriched_tasks.to_dict(orient='records'))
+        return render_template('results.html', task_model=task_model)
 
     except ValueError as e:
+        import logging
+        logging.exception(e)
         return f"Data processing error: {str(e)}", 400
     except Exception as e:
         return f"Unexpected error: {str(e)}", 500

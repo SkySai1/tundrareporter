@@ -1,61 +1,70 @@
 import pandas as pd
 
 def process_data(epics_df, stories_df, tasks_df):
-    """
-    Process and establish relationships between Epics, Stories, and Tasks.
-    Tasks without a valid story and Stories without a valid epic are assigned to placeholder items.
+    task_model = []
 
-    :param epics_df: DataFrame for epics
-    :param stories_df: DataFrame for stories
-    :param tasks_df: DataFrame for tasks
-    :return: Tuple of enriched DataFrames (epics_df, stories_df, tasks_df)
-    """
-    # Ensure all necessary columns exist
-    epic_required_cols = {'id', 'subject'}
-    story_required_cols = {'id', 'epics', 'subject'}
-    task_required_cols = {'id', 'user_story', 'subject'}
+    # Преобразуем эпики и истории в удобные словари для быстрого поиска по ref
+    epics_dict = {epic['ref']: epic['subject'] for _, epic in epics_df.iterrows()}
+    stories_dict = {story['ref']: story for _, story in stories_df.iterrows()}  # Сохраняем всю строку истории
+    story_task_count = stories_df.groupby('ref')['ref'].count()  # Считаем количество задач, привязанных к каждой истории
 
-    if not epic_required_cols.issubset(epics_df.columns):
-        raise ValueError(f"Missing required columns in Epics data: {epic_required_cols - set(epics_df.columns)}")
+    for _, task in tasks_df.iterrows():
+        # Заполняем информацию о задаче
+        task_ref = task['ref']
+        task_subject = task['subject']
+        story_ref = task.get('user_story', None)  # ref истории (может быть None)
+        epic_ref = task.get('epic_id', None)  # ref эпика (может быть None)
 
-    if not story_required_cols.issubset(stories_df.columns):
-        raise ValueError(f"Missing required columns in Stories data: {story_required_cols - set(stories_df.columns)}")
+        # Проверяем, если story_ref не пустое
+        story = stories_dict.get(story_ref) if pd.notna(story_ref) else None
 
-    if not task_required_cols.issubset(tasks_df.columns):
-        raise ValueError(f"Missing required columns in Tasks data: {task_required_cols - set(tasks_df.columns)}")
+        # Если история существует, получаем её данные
+        if story is not None:
+            story_subject = story['subject']
+        else:
+            story_subject = 'No story'
 
-    # Ensure columns are of the same type (convert to string)
-    epics_df['id'] = epics_df['id'].astype(str)
-    stories_df['epics'] = stories_df['epics'].astype(str)
-    stories_df['id'] = stories_df['id'].astype(str)
-    tasks_df['user_story'] = tasks_df['user_story'].astype(str)
+        # Получаем информацию о эпике
+        if epic_ref and epic_ref in epics_dict:
+            epic_subject = epics_dict[epic_ref]
+        else:
+            epic_subject = 'No epic'
 
-    # Create placeholder epic and story if they don't exist
-    placeholder_epic = pd.DataFrame({'id': ['0'], 'subject': ['Без эпика']})
-    placeholder_story = pd.DataFrame({'id': ['0'], 'epics': ['0'], 'subject': ['Без истории']})
+        # Получаем информацию о спринте (может быть None)
+        sprint = task.get('sprint', None)  # если спринт не указан, будет None
 
-    # Ensure there's at least one epic and one story to link invalid ones to
-    epics_df = pd.concat([epics_df, placeholder_epic], ignore_index=True)
-    stories_df = pd.concat([stories_df, placeholder_story], ignore_index=True)
+        # Получаем специалиста (может быть None)
+        specialist = task.get('assigned_to_full_name', None)  # если специалист не указан, будет None
 
-    # Merge Stories with Epics
-    stories_df = stories_df.merge(
-        epics_df[['id', 'subject']].rename(columns={'id': 'epic_id', 'subject': 'epic_subject'}),
-        left_on='epics', right_on='epic_id', how='left'
-    )
+        # Проверка наличия 'total-points' в истории
+        if story is not None and 'total-points' in story:
+            total_points = story['total-points']
+        else:
+            total_points = 0.0
 
-    # Merge Tasks with Stories
-    tasks_df = tasks_df.merge(
-        stories_df[['id', 'subject', 'epic_id', 'epic_subject']].rename(columns={
-            'id': 'story_id', 'subject': 'story_subject'
-        }),
-        left_on='user_story', right_on='story_id', how='left'
-    )
+        # Количество задач в истории (если история существует)
+        num_tasks_in_story = story_task_count.get(story_ref, 1)  # Защита от деления на 0
 
-    # Replace tasks with missing stories and stories with missing epics with placeholders
-    tasks_df['story_id'].fillna('0', inplace=True)
-    tasks_df['story_subject'].fillna('Без истории', inplace=True)
-    tasks_df['epic_subject'].fillna('Без эпика', inplace=True)
-    stories_df['epic_id'].fillna('0', inplace=True)
+        # Расчет очков на задачу (делим очки истории на количество задач в истории)
+        points_per_task = total_points / num_tasks_in_story if num_tasks_in_story > 0 else 0.0
 
-    return epics_df, stories_df, tasks_df
+        # Получаем информацию о статусе задачи
+        status = task['status']
+        created_date = task['created_date']
+        modified_date = task['modified_date']
+
+        # Добавляем информацию о задаче в модель
+        task_model.append({
+            'task_ref': task_ref,
+            'task_subject': task_subject,
+            'story_subject': story_subject,
+            'epic_subject': epic_subject,
+            'points_per_task': points_per_task,
+            'specialist': specialist,
+            'status': status,
+            'created_date': created_date,
+            'modified_date': modified_date,
+            'sprint': sprint
+        })
+
+    return task_model
