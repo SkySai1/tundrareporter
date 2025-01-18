@@ -3,7 +3,7 @@ import pandas as pd
 def process_data(epics_df, stories_df, tasks_df):
     """
     Process and establish relationships between Epics, Stories, and Tasks.
-    Exclude tasks without a valid story.
+    Tasks without a valid story and Stories without a valid epic are assigned to placeholder items.
 
     :param epics_df: DataFrame for epics
     :param stories_df: DataFrame for stories
@@ -30,6 +30,14 @@ def process_data(epics_df, stories_df, tasks_df):
     stories_df['id'] = stories_df['id'].astype(str)
     tasks_df['user_story'] = tasks_df['user_story'].astype(str)
 
+    # Create placeholder epic and story if they don't exist
+    placeholder_epic = pd.DataFrame({'id': ['0'], 'subject': ['Без эпика']})
+    placeholder_story = pd.DataFrame({'id': ['0'], 'epics': ['0'], 'subject': ['Без истории']})
+
+    # Ensure there's at least one epic and one story to link invalid ones to
+    epics_df = pd.concat([epics_df, placeholder_epic], ignore_index=True)
+    stories_df = pd.concat([stories_df, placeholder_story], ignore_index=True)
+
     # Merge Stories with Epics
     stories_df = stories_df.merge(
         epics_df[['id', 'subject']].rename(columns={'id': 'epic_id', 'subject': 'epic_subject'}),
@@ -44,32 +52,10 @@ def process_data(epics_df, stories_df, tasks_df):
         left_on='user_story', right_on='story_id', how='left'
     )
 
-    # Exclude tasks that are not linked to a valid story
-    tasks_df = tasks_df[tasks_df['story_id'].notnull()]
-
-    # Exclude stories that are not linked to a valid epic
-    stories_df = stories_df[stories_df['epic_id'].notnull()]
-
-    # Add validation checks for tasks not linked to valid stories
-    if tasks_df['story_id'].isnull().any():
-        raise ValueError("Some tasks are not linked to a valid story.")
-
-    # Add validation checks for stories not linked to valid epics
-    if stories_df['epic_id'].isnull().any():
-        raise ValueError("Some stories are not linked to a valid epic.")
+    # Replace tasks with missing stories and stories with missing epics with placeholders
+    tasks_df['story_id'].fillna('0', inplace=True)
+    tasks_df['story_subject'].fillna('Без истории', inplace=True)
+    tasks_df['epic_subject'].fillna('Без эпика', inplace=True)
+    stories_df['epic_id'].fillna('0', inplace=True)
 
     return epics_df, stories_df, tasks_df
-
-# Example usage
-if __name__ == "__main__":
-    # Example data
-    epics_data = {'id': [1, 2], 'subject': ['Epic 1', 'Epic 2']}
-    stories_data = {'id': [101, 102], 'epics': [1, 2], 'subject': ['Story 1', 'Story 2']}
-    tasks_data = {'id': [1001, 1002], 'user_story': [101, 102], 'subject': ['Task 1', 'Task 2']}
-
-    epics_df = pd.DataFrame(epics_data)
-    stories_df = pd.DataFrame(stories_data)
-    tasks_df = pd.DataFrame(tasks_data)
-
-    enriched_epics, enriched_stories, enriched_tasks = process_data(epics_df, stories_df, tasks_df)
-    print(enriched_tasks)
