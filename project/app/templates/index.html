@@ -1,12 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Task Tracker Analytics</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload or Provide URLs</title>
 </head>
 <body>
-    <h1>Upload CSV Files or Provide URLs</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <h3>Upload Files</h3>
+    <h1>Upload Files or Provide URLs</h1>
+
+    <h3>Upload CSV Files</h3>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
         <label for="epics">Epics CSV:</label>
         <input type="file" id="epics" name="epics"><br>
 
@@ -16,7 +19,11 @@
         <label for="tasks">Tasks CSV:</label>
         <input type="file" id="tasks" name="tasks"><br>
 
-        <h3>Or Provide URLs</h3>
+        <button type="submit">Submit</button>
+    </form>
+
+    <h3>Or Provide URLs</h3>
+    <form action="/upload_from_url" method="POST">
         <label for="epics_url">Epics CSV URL:</label>
         <input type="text" id="epics_url" name="epics_url" placeholder="http://example.com/epics.csv"><br>
 
