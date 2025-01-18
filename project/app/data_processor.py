@@ -3,6 +3,7 @@ import pandas as pd
 def process_data(epics_df, stories_df, tasks_df):
     """
     Process and establish relationships between Epics, Stories, and Tasks.
+    Exclude tasks without a valid story.
 
     :param epics_df: DataFrame for epics
     :param stories_df: DataFrame for stories
@@ -43,10 +44,17 @@ def process_data(epics_df, stories_df, tasks_df):
         left_on='user_story', right_on='story_id', how='left'
     )
 
-    # Add validation checks
+    # Exclude tasks that are not linked to a valid story
+    tasks_df = tasks_df[tasks_df['story_id'].notnull()]
+
+    # Exclude stories that are not linked to a valid epic
+    stories_df = stories_df[stories_df['epic_id'].notnull()]
+
+    # Add validation checks for tasks not linked to valid stories
     if tasks_df['story_id'].isnull().any():
         raise ValueError("Some tasks are not linked to a valid story.")
 
+    # Add validation checks for stories not linked to valid epics
     if stories_df['epic_id'].isnull().any():
         raise ValueError("Some stories are not linked to a valid epic.")
 
