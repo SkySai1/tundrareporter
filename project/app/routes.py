@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import os
 from .validators import validate_csv
+from .data_processor import process_data
 
 main = Blueprint('main', __name__)
 
@@ -20,64 +21,35 @@ def upload():
     stories_file = request.files.get('stories')
     tasks_file = request.files.get('tasks')
 
-    # Ожидаемые колонки для каждого типа файла
-    epics_columns = [
-        'id', 'ref', 'subject', 'description', 'owner', 'owner_full_name',
-        'assigned_to', 'assigned_to_full_name', 'status', 'epics_order',
-        'client_requirement', 'team_requirement', 'attachments', 'tags',
-        'watchers', 'voters', 'created_date', 'modified_date', 'related_user_stories'
-    ]
-    required_epic_columns = [
-        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
-    ]
+    # Проверка на пустые файлы
+    if epics_file and epics_file.filename != '' and epics_file.read(1) != b'':
+        epics_file.seek(0)  # Перемещаем указатель в начало файла после чтения
+    else:
+        return "Epics file is empty or missing", 400
 
-    stories_columns = [
-        'id', 'ref', 'subject', 'description', 'sprint_id', 'sprint', 'sprint_estimated_start',
-        'sprint_estimated_finish', 'owner', 'owner_full_name', 'assigned_to',
-        'assigned_to_full_name', 'assigned_users', 'assigned_users_full_name',
-        'status', 'is_closed', 'swimlane', 'ekspert-points', 'total-points',
-        'backlog_order', 'sprint_order', 'kanban_order', 'created_date', 'modified_date',
-        'finish_date', 'client_requirement', 'team_requirement', 'attachments',
-        'generated_from_issue', 'generated_from_task', 'from_task_ref',
-        'external_reference', 'tasks', 'tags', 'watchers', 'voters', 'due_date',
-        'due_date_reason', 'epics'
-    ]
-    required_story_columns = [
-        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
-    ]
+    if stories_file and stories_file.filename != '' and stories_file.read(1) != b'':
+        stories_file.seek(0)
+    else:
+        return "Stories file is empty or missing", 400
 
-    tasks_columns = [
-        'id', 'ref', 'subject', 'description', 'user_story', 'sprint_id', 'sprint',
-        'sprint_estimated_start', 'sprint_estimated_finish', 'owner', 'owner_full_name',
-        'assigned_to', 'assigned_to_full_name', 'status', 'is_iocaine', 'is_closed',
-        'us_order', 'taskboard_order', 'attachments', 'external_reference', 'tags',
-        'watchers', 'voters', 'created_date', 'modified_date', 'finished_date',
-        'due_date', 'due_date_reason'
-    ]
-    required_task_columns = [
-        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
-    ]
+    if tasks_file and tasks_file.filename != '' and tasks_file.read(1) != b'':
+        tasks_file.seek(0)
+    else:
+        return "Tasks file is empty or missing", 400
+
+    # Загрузка CSV в DataFrame
+    epics_df = pd.read_csv(epics_file, sep=CSV_SEPARATOR)
+    stories_df = pd.read_csv(stories_file, sep=CSV_SEPARATOR)
+    tasks_df = pd.read_csv(tasks_file, sep=CSV_SEPARATOR)
 
     try:
-        # Валидация файлов с учётом разделителя
-        if epics_file:
-            valid, error = validate_csv(epics_file, epics_columns, sep=CSV_SEPARATOR, required_columns=required_epic_columns)
-            if not valid:
-                return f"Validation error for Epics file: {error}", 400
+        # Обработка данных
+        enriched_epics, enriched_stories, enriched_tasks = process_data(epics_df, stories_df, tasks_df)
 
-        if stories_file:
-            valid, error = validate_csv(stories_file, stories_columns, sep=CSV_SEPARATOR, required_columns=required_story_columns)
-            if not valid:
-                return f"Validation error for Stories file: {error}", 400
+        # Передача данных в шаблон для отображения
+        return render_template('results.html', tasks=enriched_tasks.to_dict(orient='records'))
 
-        if tasks_file:
-            valid, error = validate_csv(tasks_file, tasks_columns, sep=CSV_SEPARATOR, required_columns=required_task_columns)
-            if not valid:
-                return f"Validation error for Tasks file: {error}", 400
-
-        # Продолжение обработки данных...
-
-        return redirect(url_for('main.index'))
-
+    except ValueError as e:
+        return f"Data processing error: {str(e)}", 400
     except Exception as e:
-        return f"Error processing files: {str(e)}", 500
+        return f"Unexpected error: {str(e)}", 500
