@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 import pandas as pd
 import requests
 import os
+from .validators import validate_csv
 
 main = Blueprint('main', __name__)
 
@@ -19,40 +20,64 @@ def upload():
     stories_file = request.files.get('stories')
     tasks_file = request.files.get('tasks')
 
-    # Обработка ссылок
-    epics_url = request.form.get('epics_url')
-    stories_url = request.form.get('stories_url')
-    tasks_url = request.form.get('tasks_url')
+    # Ожидаемые колонки для каждого типа файла
+    epics_columns = [
+        'id', 'ref', 'subject', 'description', 'owner', 'owner_full_name',
+        'assigned_to', 'assigned_to_full_name', 'status', 'epics_order',
+        'client_requirement', 'team_requirement', 'attachments', 'tags',
+        'watchers', 'voters', 'created_date', 'modified_date', 'related_user_stories'
+    ]
+    required_epic_columns = [
+        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
+    ]
+
+    stories_columns = [
+        'id', 'ref', 'subject', 'description', 'sprint_id', 'sprint', 'sprint_estimated_start',
+        'sprint_estimated_finish', 'owner', 'owner_full_name', 'assigned_to',
+        'assigned_to_full_name', 'assigned_users', 'assigned_users_full_name',
+        'status', 'is_closed', 'swimlane', 'ekspert-points', 'total-points',
+        'backlog_order', 'sprint_order', 'kanban_order', 'created_date', 'modified_date',
+        'finish_date', 'client_requirement', 'team_requirement', 'attachments',
+        'generated_from_issue', 'generated_from_task', 'from_task_ref',
+        'external_reference', 'tasks', 'tags', 'watchers', 'voters', 'due_date',
+        'due_date_reason', 'epics'
+    ]
+    required_story_columns = [
+        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
+    ]
+
+    tasks_columns = [
+        'id', 'ref', 'subject', 'description', 'user_story', 'sprint_id', 'sprint',
+        'sprint_estimated_start', 'sprint_estimated_finish', 'owner', 'owner_full_name',
+        'assigned_to', 'assigned_to_full_name', 'status', 'is_iocaine', 'is_closed',
+        'us_order', 'taskboard_order', 'attachments', 'external_reference', 'tags',
+        'watchers', 'voters', 'created_date', 'modified_date', 'finished_date',
+        'due_date', 'due_date_reason'
+    ]
+    required_task_columns = [
+        'id', 'ref', 'subject', 'status', 'created_date', 'modified_date'
+    ]
 
     try:
-        # Загрузка данных
+        # Валидация файлов с учётом разделителя
         if epics_file:
-            epics = pd.read_csv(epics_file, sep=CSV_SEPARATOR, encoding='utf-8', on_bad_lines='skip')
-        elif epics_url:
-            epics_content = requests.get(epics_url).content.decode('utf-8')
-            epics = pd.read_csv(pd.compat.StringIO(epics_content), sep=CSV_SEPARATOR, on_bad_lines='skip')
-        else:
-            return 'Epics file or URL is required', 400
+            valid, error = validate_csv(epics_file, epics_columns, sep=CSV_SEPARATOR, required_columns=required_epic_columns)
+            if not valid:
+                return f"Validation error for Epics file: {error}", 400
 
         if stories_file:
-            stories = pd.read_csv(stories_file, sep=CSV_SEPARATOR, encoding='utf-8', on_bad_lines='skip')
-        elif stories_url:
-            stories_content = requests.get(stories_url).content.decode('utf-8')
-            stories = pd.read_csv(pd.compat.StringIO(stories_content), sep=CSV_SEPARATOR, on_bad_lines='skip')
-        else:
-            return 'Stories file or URL is required', 400
+            valid, error = validate_csv(stories_file, stories_columns, sep=CSV_SEPARATOR, required_columns=required_story_columns)
+            if not valid:
+                return f"Validation error for Stories file: {error}", 400
 
         if tasks_file:
-            tasks = pd.read_csv(tasks_file, sep=CSV_SEPARATOR, encoding='utf-8', on_bad_lines='skip')
-        elif tasks_url:
-            tasks_content = requests.get(tasks_url).content.decode('utf-8')
-            tasks = pd.read_csv(pd.compat.StringIO(tasks_content), sep=CSV_SEPARATOR, on_bad_lines='skip')
-        else:
-            return 'Tasks file or URL is required', 400
+            valid, error = validate_csv(tasks_file, tasks_columns, sep=CSV_SEPARATOR, required_columns=required_task_columns)
+            if not valid:
+                return f"Validation error for Tasks file: {error}", 400
 
-        # Здесь можно обработать данные или сохранить их в БД
+        # Продолжение обработки данных...
 
         return redirect(url_for('main.index'))
 
     except Exception as e:
-        return f'Error processing files or URLs: {str(e)}', 500
+        return f"Error processing files: {str(e)}", 500
